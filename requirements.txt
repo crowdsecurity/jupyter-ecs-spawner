@@ -1,0 +1,4 @@
+jupyterhub
+jupyterlab
+jupyter
+boto3

@@ -1,0 +1,109 @@
+<script>
+    instance_details = $instance_json;
+    regions = $regions;
+    available_instances = {};
+    tbl_header = ["Type", "vCPU", "Memory", "Arch", "GPU"]
+    
+    
+    function displayInstanceDetails() {
+        instance_type = document.getElementById("instance").value;
+        var tbl = document.createElement('table');
+        head = tbl.createTHead();
+        row = tbl.insertRow();
+        for (var i = 0; i < tbl_header.length; i++) {
+            th = document.createElement("th");
+            text = document.createTextNode(tbl_header[i]);
+            th.appendChild(text);
+            row.appendChild(th); 
+        }
+        instance = available_instances[instance_type];
+        row = tbl.insertRow();
+        for (var i = 0; i < tbl_header.length; i++) {
+            let cell = row.insertCell();
+            if (tbl_header[i] == "Type") {
+                text = document.createTextNode(instance_type)
+            } else if (tbl_header[i] == "GPU") {
+                if (instance.gpu !== undefined) {
+                    text = document.createTextNode(instance.gpu.count + " x " + instance.gpu.type)
+                } else {
+                    text = document.createTextNode("No GPU")
+                }
+            } else {
+                text = document.createTextNode(instance[tbl_header[i].toLowerCase()]);
+            }
+            cell.appendChild(text);
+        }
+        tbl.setAttribute("class", "table");
+        details = document.getElementById("details");
+        details.innerHTML = '';
+        details.appendChild(tbl);
+    }
+    
+    function genRegionSelect() {
+        var region_select = document.getElementById('region');
+        for (var i = 0; i < regions.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = regions[i];
+            opt.innerHTML = regions[i];
+            region_select.appendChild(opt);
+        }
+    }
+    
+    function updateAvailableInstances() {
+        region = document.getElementById("region").value;
+        available_instances = instance_details[region];
+        select = document.getElementById('instance');
+        select.innerHTML = '';
+        keys = Object.keys(available_instances).sort();
+        for (var i = 0; i < keys.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = keys[i];
+            opt.innerHTML = keys[i];
+            select.appendChild(opt);
+        }
+    }
+    
+    window.addEventListener("load",function(){
+        genRegionSelect();
+        updateAvailableInstances();
+        displayInstanceDetails();
+    },false);
+    
+</script>
+    
+    <div class="form-group">
+        <label for="region">Region</label>
+        <select class="form-select" id="region" name="region" onchange="updateAvailableInstances()"></select>
+        <br />
+        <label for="instance">Instance type</label>
+        <select class="form-select" onchange=displayInstanceDetails() name="instance" id="instance">
+        </select>
+        <br />
+        <label for="spot">Spot instance</label>
+        <input type="checkbox" id="spot" name="spot">
+       
+        <div class="wrapper center-block">
+            <div class="panel-group" id="accordion" role="tablist">
+            <div class="panel panel-default">
+              <div class="panel-heading" role="tab" id="headingOne">
+                <h4 class="panel-title">
+                  <a role="button" data-toggle="collapse" data-parent="#accordion" href="#advancedConfig" aria-expanded="false" aria-controls="advancedConfig">
+                    Advanced Configuration
+                  </a>
+                </h4>
+              </div>
+              <div id="advancedConfig" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingOne">
+                <div class="panel-body">
+                    <label for="image">Docker Image</label>
+                    <input type="text" id="image" name="image">
+                    <br />
+                    <label for="volume">Root Volume Size (GiB)</label>
+                    <input type="number" id="volume" name="volume">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+    <div id="details">
+    </div>
