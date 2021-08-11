@@ -130,13 +130,21 @@ class ECSSpawner(Spawner):
                 'InstanceType': type,
                 'UserData': base64.b64encode(self.USER_DATA_SCRIPT.format(self.ecs_cluster).encode()).decode(),
                 'InstanceInitiatedShutdownBehavior': 'terminate',
-                'IamInstanceProfile': {"Arn":self.instance_role_arn}
+                'IamInstanceProfile': {"Arn":self.instance_role_arn},
+                'TagSpecifications': [ 
+                        {
+                            "ResourceType": "instance", 
+                            "Tags": [{"Key": "Name", "Value": "jupyter-notebook-{0}".format(self.user.name) }]
+                        }
+                ]
         }
         if self.key_pair_name:
             run_args['KeyName'] = self.key_pair_name
         if self.subnet_id:
+            self.log.info('Running in subnet {0}'.format(self.subnet_id))
             run_args['SubnetId'] = self.subnet_id
         if self.security_groups_ids:
+            self.log.info('Adding security groups {0}'.format(self.security_groups_ids))
             run_args['SecurityGroupIds'] = self.security_groups_ids
 
         if self.user_options['volume'] != '':
@@ -174,7 +182,7 @@ class ECSSpawner(Spawner):
                     'ImageId': ami,
                     'InstanceType': type,
                     'UserData':base64.b64encode(self.USER_DATA_SCRIPT.format(self.ecs_cluster).encode()).decode(),
-                    'IamInstanceProfile': {"Arn":self.instance_role_arn}
+                    'IamInstanceProfile': {"Arn":self.instance_role_arn},
             }
             if self.key_pair_name:
                 run_args['KeyName'] = self.key_pair_name
@@ -203,6 +211,7 @@ class ECSSpawner(Spawner):
             spot_instance = ec2_client.describe_spot_instance_requests(SpotInstanceRequestIds=[spot_request['SpotInstanceRequests'][0]['SpotInstanceRequestId']])
             instance_id =  spot_instance['SpotInstanceRequests'][0]['InstanceId']
             self.log.info('Spot instance is running (id: {0})'.format(instance_id))
+            ec2_client.create_tags(Resources=[instance_id], Tags=[{'Key': 'Name', 'Value': 'jupyter-notebook-{0}'.format(self.user.name) }])
             if self.use_public_ip is True:
                 self.ip = ec2_client.describe_instances(InstanceIds=[instance_id])['Reservations'][0]['Instances'][0]['PublicIpAddress']
             else:
