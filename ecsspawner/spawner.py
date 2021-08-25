@@ -33,6 +33,7 @@ class ECSSpawner(Spawner):
     default_docker_image_gpu = traitlets.Unicode(config=True) # Name of the docker image to use by default for the ECS task, if the underlying instance has a GPU
     key_pair_name = traitlets.Unicode(config=True) #Name of the keypair to associate with the instance. Optional, if not provided, you will not be able to SSH to the instance.
     use_public_ip = traitlets.Bool(default_value=False, config=True)
+    custom_env = traitlets.Dict(value_trait=traitlets.Unicode(), key_trait=traitlets.Unicode(), config=True) #Dict of environment variables to be added to the container
 
 
     USER_DATA_SCRIPT = """
@@ -57,7 +58,6 @@ class ECSSpawner(Spawner):
         self.instance_type = self.user_options['instance']
         self.region = self.user_options['region']
         self.state = []
-
 
         instance_id = await self.__spawn_ec2(self.user_options['instance'])
         with ThreadPoolExecutor(1) as executor:
@@ -225,7 +225,7 @@ class ECSSpawner(Spawner):
                 ami = self.ec2_gpu_ami
             else:
                 ami = self.amis[region]['gpu']
-        elif self.instances[region][type]['arch'] == 'x86_64':
+        elif self.instances[region][type]['arch'] == 'x86_64' or self.instances[region][type]['arch'] == 'i386':
             if self.ec2_ami != '':
                 ami = self.ec2_ami
             else:
@@ -304,6 +304,8 @@ class ECSSpawner(Spawner):
         container_env['NB_USER'] = self.user.name
         container_env['CHOWN_HOME'] = 'yes'
         container_env['JUPYTER_ENABLE_LAB'] = 'yes'
+        for k, v in self.custom_env.items():
+            container_env[k] = v
 
         self.log.info('Using docker image {0}'.format(container_image))
         self.log.info('Creating ECS task')

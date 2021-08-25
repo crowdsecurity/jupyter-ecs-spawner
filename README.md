@@ -26,6 +26,8 @@ Each notebook server runs on a dedicated EC2 instance which is destroyed when th
 | ECSSpawner.ec2_ami | AMI to use for x86 instances | False | The latest ECS optimized x86 AMI in the region |
 | ECSSpawner.ec2_arm_ami | AMI to use for ARM instances | False | The latest ECS optimized ARM AMI in the region (caution: AWS does not provide ARM ECS AMI in all regions) |
 | ECSSpawner.ec2_gpu_ami | AMI to use for GPU instances | False | The latest ECS optimized GPU AMI in the region |
+| ECSSpawner.custom_env | Dict of custom env vars for the notebook | False | {} |
+
 
 
 ### Private images
