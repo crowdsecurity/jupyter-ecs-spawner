@@ -4,7 +4,7 @@ import time
 import base64
 import pkgutil
 import string
-
+import copy
 
 import boto3
 
@@ -376,14 +376,14 @@ class ECSSpawner(Spawner):
                 container_image = self.default_docker_image_gpu
             else:
                 container_image = self.default_docker_image
-        container_env = self.get_env()
+        container_env = copy.deepcopy(self.get_env())
         # make this configurable ?
-        container_env["JUPYTERHUB_API_URL"] = container_env[
+        self.custom_env[
             "JUPYTERHUB_API_URL"
-        ].replace("127.0.0.1", os.environ["HUB_HOSTNAME"])
-        container_env["JUPYTERHUB_ACTIVITY_URL"] = container_env[
+        ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api"
+        self.custom_env[
             "JUPYTERHUB_ACTIVITY_URL"
-        ].replace("127.0.0.1", os.environ["HUB_HOSTNAME"])
+        ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api/users/test/activity"
 
         container_env["GRANT_SUDO"] = "yes"
         container_env["NB_USER"] = self.user.name
