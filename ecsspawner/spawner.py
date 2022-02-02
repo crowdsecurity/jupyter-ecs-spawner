@@ -40,7 +40,7 @@ class ECSSpawner(Spawner):
     subnet_id = traitlets.Unicode(config=True)
     ecs_cluster = traitlets.Unicode(
         default_value="default", config=True
-    )  # The name of the ECS cluster we want to use
+    )  # The name of the ECS cluster we want to os.environ["TASK_ROLE_ARN"]se
     instance_role_arn = traitlets.Unicode(
         config=True
     )  # ARN of the role to associate with the EC2 instances. Must grant access to ECS.
@@ -159,7 +159,7 @@ class ECSSpawner(Spawner):
                 self.USER_DATA_SCRIPT.format(self.ecs_cluster).encode()
             ).decode(),
             "InstanceInitiatedShutdownBehavior": "terminate",
-            "IamInstanceProfile": {"Arn": self.instance_role_arn},
+            "IamInstanceProfile": {"Arn": os.environ["TASK_ROLE_ARN"]},
             "TagSpecifications": [
                 {
                     "ResourceType": "instance",
