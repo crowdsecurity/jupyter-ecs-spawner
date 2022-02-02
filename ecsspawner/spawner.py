@@ -376,7 +376,7 @@ class ECSSpawner(Spawner):
                 container_image = self.default_docker_image_gpu
             else:
                 container_image = self.default_docker_image
-        container_env = copy.deepcopy(self.get_env())
+        container_env = self.get_env()
         # make this configurable ?
         # self.custom_env[
         #     "JUPYTERHUB_API_URL"
