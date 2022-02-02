@@ -390,7 +390,7 @@ class ECSSpawner(Spawner):
         self.state.append("Creating ECS task")
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
-            task_role_arn=os.environ["TASK_ROLE_ARN"],
+            taskRoleArn=os.environ["TASK_ROLE_ARN"],
             networkMode="host",
             containerDefinitions=[
                 {
