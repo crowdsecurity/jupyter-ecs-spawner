@@ -378,12 +378,12 @@ class ECSSpawner(Spawner):
                 container_image = self.default_docker_image
         container_env = copy.deepcopy(self.get_env())
         # make this configurable ?
-        self.custom_env[
-            "JUPYTERHUB_API_URL"
-        ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api"
-        self.custom_env[
-            "JUPYTERHUB_ACTIVITY_URL"
-        ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api/users/test/activity"
+        # self.custom_env[
+        #     "JUPYTERHUB_API_URL"
+        # ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api"
+        # self.custom_env[
+        #     "JUPYTERHUB_ACTIVITY_URL"
+        # ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api/users/test/activity"
 
         container_env["GRANT_SUDO"] = "yes"
         container_env["NB_USER"] = self.user.name
