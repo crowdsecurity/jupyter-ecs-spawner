@@ -22,9 +22,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 class ECSSpawner(Spawner):
 
-    security_groups_ids = traitlets.List(
-        traitlets.Unicode(), config=True
-    )  # List of security group for the EC2 instance
     custom_tags = traitlets.Dict(
         value_trait=traitlets.Unicode(), key_trait=traitlets.Unicode(), config=True
     )  # Dict of tags to apply to all instance
@@ -37,10 +34,6 @@ class ECSSpawner(Spawner):
     ec2_gpu_ami = traitlets.Unicode(
         config=True
     )  # Id of the AMI to use for instance with GPU
-    subnet_id = traitlets.Unicode(config=True)
-    ecs_cluster = traitlets.Unicode(
-        default_value="default", config=True
-    )  # The name of the ECS cluster we want to use
     instance_role_arn = traitlets.Unicode(
         config=True
     )  # ARN of the role to associate with the EC2 instances. Must grant access to ECS.
@@ -54,9 +47,6 @@ class ECSSpawner(Spawner):
         config=True
     )  # Name of the keypair to associate with the instance. Optional, if not provided, you will not be able to SSH to the instance.
     use_public_ip = traitlets.Bool(default_value=False, config=True)
-    custom_env = traitlets.Dict(
-        value_trait=traitlets.Unicode(), key_trait=traitlets.Unicode(), config=True
-    )  # Dict of environment variables to be added to the container
 
     USER_DATA_SCRIPT = """
     #!/bin/bash
@@ -69,6 +59,22 @@ class ECSSpawner(Spawner):
         self.instances = json.loads(pkgutil.get_data("ecsspawner", "instances.json"))
         self.amis = json.loads(pkgutil.get_data("ecsspawner", "amis.json"))
         self.check_config()
+
+        # AWS environment variables
+        self.hub_host = os.environ["HUB_HOSTNAME"]
+        self.task_role_arn = os.environ["TASK_ROLE_ARN"]
+        self.efs_id = os.environ["EFS_ID"]
+        self.subnet_id = os.environ["SUBNET_ID"]
+        self.sg_id = os.environ["SECURITY_GROUP_ID"]
+        self.ecs_cluster = os.environ["ECS_CLUSTER"]
+        self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
+
+        # Custom environment for notebook
+        self.custom_env = {
+            "MLFLOW_TRACKING_URI": os.environ["MLFLOW_TRACKING_URI"],
+            "JUPYTERHUB_API_URL": f"http://{self.hub_host}:8081/hub/api",
+            "JUPYTERHUB_ACTIVITY_URL": f"http://{self.hub_host}:8081/hub/api/users/test/activity",
+        }
 
     def check_config(self):
         # TODO
@@ -177,9 +183,9 @@ class ECSSpawner(Spawner):
         if self.subnet_id:
             self.log.info("Running in subnet {0}".format(self.subnet_id))
             run_args["SubnetId"] = self.subnet_id
-        if self.security_groups_ids:
-            self.log.info("Adding security groups {0}".format(self.security_groups_ids))
-            run_args["SecurityGroupIds"] = self.security_groups_ids
+        if self.sg_id:
+            self.log.info("Adding security groups {0}".format(self.sg_id))
+            run_args["SecurityGroupIds"] = self.sg_id
 
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
@@ -230,8 +236,8 @@ class ECSSpawner(Spawner):
             run_args["KeyName"] = self.key_pair_name
         if self.subnet_id:
             run_args["SubnetId"] = self.subnet_id
-        if self.security_groups_ids:
-            run_args["SecurityGroupIds"] = self.security_groups_ids
+        if self.sg_id:
+            run_args["SecurityGroupIds"] = self.sg_id
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
             run_args["BlockDeviceMappings"] = [
@@ -378,12 +384,6 @@ class ECSSpawner(Spawner):
                 container_image = self.default_docker_image
         container_env = copy.deepcopy(self.get_env())
         # make this configurable ?
-        self.custom_env[
-            "JUPYTERHUB_API_URL"
-        ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api"
-        self.custom_env[
-            "JUPYTERHUB_ACTIVITY_URL"
-        ] = f"http://{os.environ['HUB_HOSTNAME']}:8081/hub/api/users/test/activity"
 
         container_env["GRANT_SUDO"] = "yes"
         container_env["NB_USER"] = self.user.name
@@ -397,8 +397,17 @@ class ECSSpawner(Spawner):
         self.state.append("Creating ECS task")
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
-            taskRoleArn=os.environ["TASK_ROLE_ARN"],
+            taskRoleArn=self.task_role_arn,
             networkMode="host",
+            volumes=[
+                {
+                    "name": "shared-persistent-volume",
+                    "efsVolumeConfiguration": {
+                        "fileSystemId": self.efs_id,
+                        "transitEncryption": "DISABLED",
+                    },
+                }
+            ],
             containerDefinitions=[
                 {
                     "name": "jupyter-task-{0}".format(self.user.name),
@@ -425,6 +434,13 @@ class ECSSpawner(Spawner):
                             ),
                         },
                     },
+                    "mountPoints": [
+                        {
+                            "sourceVolume": "shared-persistent-volume",
+                            "containerPath": "/shared",
+                            "readOnly": False,
+                        }
+                    ],
                 }
             ],
         )
