@@ -70,7 +70,7 @@ class ECSSpawner(Spawner):
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
 
         # Custom environment for notebook
-        # self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
+        self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
         self.custom_env = {
             "MLFLOW_TRACKING_URI": os.environ["MLFLOW_TRACKING_URI"],
             "JUPYTERHUB_API_URL": f"http://{self.hub_host}:8081/hub/api",
