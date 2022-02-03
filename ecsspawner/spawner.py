@@ -65,7 +65,7 @@ class ECSSpawner(Spawner):
         self.task_role_arn = os.environ["TASK_ROLE_ARN"]
         self.efs_id = os.environ["EFS_ID"]
         self.subnet_id = os.environ["SUBNET_ID"]
-        self.sg_id = os.environ["SECURITY_GROUP_ID"]
+        self.sg_id = [os.environ["SECURITY_GROUP_ID"]]
         self.ecs_cluster = os.environ["ECS_CLUSTER"]
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
 
