@@ -410,11 +410,8 @@ class ECSSpawner(Spawner):
             "command": [
                 "start-singleuser.sh",
                 "--SingleUserNotebookApp.default_url=/lab",
-                f"-e NB_USER='{self.user.name}'",
-                "-e CHOWN_HOME=yes",
                 f"-w '/home/{self.user.name}'",
                 "--user root",
-                "-e GRANT_SUDO=yes",
             ],
             "logConfiguration": {
                 "logDriver": "awslogs",
@@ -438,7 +435,7 @@ class ECSSpawner(Spawner):
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
             taskRoleArn=self.task_role_arn,
-            networkMode="awsvpc",
+            networkMode="host",
             volumes=[
                 {
                     "name": "shared-persistent-volume",
