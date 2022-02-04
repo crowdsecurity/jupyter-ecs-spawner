@@ -396,6 +396,50 @@ class ECSSpawner(Spawner):
         self.log.info("Using docker image {0}".format(container_image))
         self.log.info("Creating ECS task")
         self.state.append("Creating ECS task")
+
+        container_def = {
+            "name": "jupyter-task-{0}".format(self.user.name),
+            "image": container_image,
+            "cpu": available_cpu,
+            "memory": available_memory,
+            "environment": [
+                {"name": key, "value": value} for key, value in container_env.items()
+            ],
+            "user": "root",
+            "workingDirectory": "/home/{0}".format(self.user.name),
+            "command": [
+                "start-singleuser.sh",
+                "--SingleUserNotebookApp.default_url=/lab",
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-region": region,
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "/jupyterhub/jupyter-logs-{0}".format(
+                        self.user.name
+                    ),
+                },
+            },
+            "mountPoints": [
+                {
+                    "sourceVolume": "shared-persistent-volume",
+                    "containerPath": "/shared",
+                    "readOnly": False,
+                }
+            ],
+        }
+
+        if self.instances[region][self.user_options["instance"]].get("gpu"):
+            self.log.info("adding gpu reqs")
+            container_def["resourceRequirements"] = [
+                {
+                    "type": "GPU",
+                    "value": "1",
+                }
+            ]
+            self.log.info(container_def)
+
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
             taskRoleArn=self.task_role_arn,
@@ -409,41 +453,7 @@ class ECSSpawner(Spawner):
                     },
                 }
             ],
-            containerDefinitions=[
-                {
-                    "name": "jupyter-task-{0}".format(self.user.name),
-                    "image": container_image,
-                    "cpu": available_cpu,
-                    "memory": available_memory,
-                    "environment": [
-                        {"name": key, "value": value}
-                        for key, value in container_env.items()
-                    ],
-                    "user": "root",
-                    "workingDirectory": "/home/{0}".format(self.user.name),
-                    "command": [
-                        "start-singleuser.sh",
-                        "--SingleUserNotebookApp.default_url=/lab",
-                    ],
-                    "logConfiguration": {
-                        "logDriver": "awslogs",
-                        "options": {
-                            "awslogs-region": region,
-                            "awslogs-create-group": "true",
-                            "awslogs-group": "/jupyterhub/jupyter-logs-{0}".format(
-                                self.user.name
-                            ),
-                        },
-                    },
-                    "mountPoints": [
-                        {
-                            "sourceVolume": "shared-persistent-volume",
-                            "containerPath": "/shared",
-                            "readOnly": False,
-                        }
-                    ],
-                }
-            ],
+            containerDefinitions=[container_def],
         )
         self.log.info("ECS task created")
         self.task_definition_arn = r["taskDefinition"]["taskDefinitionArn"]
