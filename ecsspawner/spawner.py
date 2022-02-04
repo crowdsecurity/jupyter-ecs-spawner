@@ -410,6 +410,11 @@ class ECSSpawner(Spawner):
             "command": [
                 "start-singleuser.sh",
                 "--SingleUserNotebookApp.default_url=/lab",
+                f"-e NB_USER='{self.user.name}'",
+                "-e CHOWN_HOME=yes",
+                f"-w '/home/{self.user.name}'",
+                "--user root",
+                "-e GRANT_SUDO=yes",
             ],
             "logConfiguration": {
                 "logDriver": "awslogs",
@@ -430,20 +435,10 @@ class ECSSpawner(Spawner):
             ],
         }
 
-        if self.instances[region][self.user_options["instance"]].get("gpu"):
-            self.log.info("adding gpu reqs")
-            container_def["resourceRequirements"] = [
-                {
-                    "type": "GPU",
-                    "value": "1",
-                }
-            ]
-            self.log.info(container_def)
-
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
             taskRoleArn=self.task_role_arn,
-            networkMode="host",
+            networkMode="awsvpc",
             volumes=[
                 {
                     "name": "shared-persistent-volume",
