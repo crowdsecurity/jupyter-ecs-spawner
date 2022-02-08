@@ -410,8 +410,6 @@ class ECSSpawner(Spawner):
             "command": [
                 "start-singleuser.sh",
                 "--SingleUserNotebookApp.default_url=/lab",
-                f"-w '/home/{self.user.name}'",
-                "--user root",
             ],
             "logConfiguration": {
                 "logDriver": "awslogs",
