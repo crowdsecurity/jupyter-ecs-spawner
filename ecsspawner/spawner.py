@@ -376,7 +376,7 @@ class ECSSpawner(Spawner):
         if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
             num_gpus = self.instances[region][self.user_options["instance"]]["gpu"]["count"]
             print(f"gpus = {num_gpus}")
-            container_def["resourceRequirements"] = [{"type": "GPU", "value": num_gpus}]
+            container_def["resourceRequirements"] = [{"type": "GPU", "value": str(num_gpus)}]
             self.log.info(f"Using {num_gpus} x GPU")
 
         self.log.info("Creating ECS task def")
