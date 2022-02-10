@@ -333,6 +333,13 @@ class ECSSpawner(Spawner):
             attributes=[{"name": "jupyter-owner", "value": self.user.name, "targetId": self.container_instance_arn}],
         )
 
+        if self.user_options["image"] != "":
+            container_image = self.user_options["image"]
+        else:
+            if self.instances[region][self.user_options["instance"]].get("gpu"):
+                container_image = self.default_docker_image_gpu
+            else:
+                container_image = self.default_docker_image
         container_env = copy.deepcopy(self.get_env())
         # make this configurable ?
         container_env["GRANT_SUDO"] = "yes"
@@ -342,8 +349,11 @@ class ECSSpawner(Spawner):
         for k, v in self.custom_env.items():
             container_env[k] = v
 
+        self.log.info("Using docker image {0}".format(container_image))
+
         container_def = {
             "name": "jupyter-task-{0}".format(self.user.name),
+            "image": container_image,
             "cpu": available_cpu,
             "memory": available_memory,
             "environment": [{"name": key, "value": value} for key, value in container_env.items()],
@@ -363,20 +373,14 @@ class ECSSpawner(Spawner):
             ],
         }
 
-        if self.user_options["image"] != "":
-            container_def["image"] = self.user_options["image"]
-        else:
-            if self.instances[region][self.user_options["instance"]].get("gpu"):
-                container_def["image"] = self.default_docker_image_gpu
-                container_def["resourceRequirements"] = [{"type": "GPU", "value": 1}]
-                self.log.info("Using {0} x GPU".format(container_def["resourceRequirements"][0]["value"]))
-            else:
-                container_def["image"] = self.default_docker_image
+        if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
+            num_gpus = self.instances[region][self.user_options["instance"]]["gpu"]["count"]
+            print(f"gpus = {num_gpus}")
+            container_def["resourceRequirements"] = [{"type": "GPU", "value": num_gpus}]
+            self.log.info(f"Using {num_gpus} x GPU")
 
-        self.log.info("Using docker image {0}".format(container_def["image"]))
-
-        self.log.info("Creating ECS task Def")
-        self.state.append("Creating ECS task Def")
+        self.log.info("Creating ECS task def")
+        self.state.append("Creating ECS task def")
 
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
@@ -390,7 +394,7 @@ class ECSSpawner(Spawner):
             ],
             containerDefinitions=[container_def],
         )
-        self.log.info("ECS task Def created")
+        self.log.info("ECS task created")
         self.task_definition_arn = r["taskDefinition"]["taskDefinitionArn"]
         self.log.info("Starting ECS task")
         self.state.append("Starting ECS task")
