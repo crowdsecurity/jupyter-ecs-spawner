@@ -333,13 +333,6 @@ class ECSSpawner(Spawner):
             attributes=[{"name": "jupyter-owner", "value": self.user.name, "targetId": self.container_instance_arn}],
         )
 
-        if self.user_options["image"] != "":
-            container_image = self.user_options["image"]
-        else:
-            if self.instances[region][self.user_options["instance"]].get("gpu"):
-                container_image = self.default_docker_image_gpu
-            else:
-                container_image = self.default_docker_image
         container_env = copy.deepcopy(self.get_env())
         # make this configurable ?
         container_env["GRANT_SUDO"] = "yes"
@@ -349,13 +342,8 @@ class ECSSpawner(Spawner):
         for k, v in self.custom_env.items():
             container_env[k] = v
 
-        self.log.info("Using docker image {0}".format(container_image))
-        self.log.info("Creating ECS task")
-        self.state.append("Creating ECS task")
-
         container_def = {
             "name": "jupyter-task-{0}".format(self.user.name),
-            "image": container_image,
             "cpu": available_cpu,
             "memory": available_memory,
             "environment": [{"name": key, "value": value} for key, value in container_env.items()],
@@ -375,6 +363,21 @@ class ECSSpawner(Spawner):
             ],
         }
 
+        if self.user_options["image"] != "":
+            container_def["image"] = self.user_options["image"]
+        else:
+            if self.instances[region][self.user_options["instance"]].get("gpu"):
+                container_def["image"] = self.default_docker_image_gpu
+                container_def["resourceRequirements"] = [{"type": "GPU", "value": 1}]
+                self.log.info("Using {0} x GPU".format(container_def["resourceRequirements"][0]["value"]))
+            else:
+                container_def["image"] = self.default_docker_image
+
+        self.log.info("Using docker image {0}".format(container_def["image"]))
+
+        self.log.info("Creating ECS task Def")
+        self.state.append("Creating ECS task Def")
+
         r = ecs_client.register_task_definition(
             family="jupyter-task-{0}".format(self.user.name),
             taskRoleArn=self.task_role_arn,
@@ -387,7 +390,7 @@ class ECSSpawner(Spawner):
             ],
             containerDefinitions=[container_def],
         )
-        self.log.info("ECS task created")
+        self.log.info("ECS task Def created")
         self.task_definition_arn = r["taskDefinition"]["taskDefinitionArn"]
         self.log.info("Starting ECS task")
         self.state.append("Starting ECS task")
