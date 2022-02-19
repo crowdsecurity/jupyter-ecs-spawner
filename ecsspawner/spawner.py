@@ -58,18 +58,40 @@ class ECSSpawner(Spawner):
         self.hub_host = os.environ["HUB_HOSTNAME"]
         self.task_role_arn = os.environ["TASK_ROLE_ARN"]
         self.efs_id = os.environ["EFS_ID"]
+        self.efs_private_id = self.get_private_ids()
         self.subnet_id = os.environ["SUBNET_ID"]
         self.sg_id = [os.environ["SECURITY_GROUP_ID"]]
         self.ecs_cluster = os.environ["ECS_CLUSTER"]
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
 
         # Custom environment for notebook
-        # self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
+        self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
+
         self.custom_env = {
             "MLFLOW_TRACKING_URI": os.environ["MLFLOW_TRACKING_URI"],
             "JUPYTERHUB_API_URL": f"http://{self.hub_host}:8081/hub/api",
             "JUPYTERHUB_ACTIVITY_URL": f"http://{self.hub_host}:8081/hub/api/users/test/activity",
         }
+
+    @staticmethod
+    def get_private_ids():
+        efs_client = boto3.client("efs")
+        r = efs_client.describe_file_systems()
+
+        all_ids = {}
+
+        for fs in r["FileSystems"]:
+            priv = False
+            for tag in fs["Tags"]:
+                if tag["Value"] == "private":
+                    priv = True
+                if tag["Key"] == "user":
+                    name = tag["Value"]
+
+            if priv:
+                all_ids[name] = fs["FileSystemId"]
+
+        return all_ids
 
     def check_config(self):
         # TODO
@@ -336,7 +358,7 @@ class ECSSpawner(Spawner):
         if self.user_options["image"] != "":
             container_image = self.user_options["image"]
         else:
-            if self.instances[region][self.user_options["instance"]].get("gpu"):
+            if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
                 container_image = self.default_docker_image_gpu
             else:
                 container_image = self.default_docker_image
@@ -369,7 +391,8 @@ class ECSSpawner(Spawner):
                 },
             },
             "mountPoints": [
-                {"sourceVolume": "shared-persistent-volume", "containerPath": "/shared", "readOnly": False}
+                {"sourceVolume": "shared-persistent-volume", "containerPath": "/shared", "readOnly": False},
+                {"sourceVolume": "private-persistent-volume", "containerPath": "/private", "readOnly": False},
             ],
         }
 
@@ -390,7 +413,14 @@ class ECSSpawner(Spawner):
                 {
                     "name": "shared-persistent-volume",
                     "efsVolumeConfiguration": {"fileSystemId": self.efs_id, "transitEncryption": "DISABLED"},
-                }
+                },
+                {
+                    "name": "private-persistent-volume",
+                    "efsVolumeConfiguration": {
+                        "fileSystemId": self.efs_private_id[self.user.name],
+                        "transitEncryption": "DISABLED",
+                    },
+                },
             ],
             containerDefinitions=[container_def],
         )
