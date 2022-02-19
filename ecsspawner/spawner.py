@@ -358,7 +358,7 @@ class ECSSpawner(Spawner):
         if self.user_options["image"] != "":
             container_image = self.user_options["image"]
         else:
-            if self.instances[region][self.user_options["instance"]].get("gpu"):
+            if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
                 container_image = self.default_docker_image_gpu
             else:
                 container_image = self.default_docker_image
