@@ -391,8 +391,16 @@ class ECSSpawner(Spawner):
                 },
             },
             "mountPoints": [
-                {"sourceVolume": "shared-persistent-volume", "containerPath": "/shared", "readOnly": False},
-                {"sourceVolume": "private-persistent-volume", "containerPath": "/private", "readOnly": False},
+                {
+                    "sourceVolume": "shared-persistent-volume",
+                    "containerPath": f"/home/{self.user.name}/shared",
+                    "readOnly": False,
+                },
+                {
+                    "sourceVolume": "private-persistent-volume",
+                    "containerPath": f"/home/{self.user.name}/private",
+                    "readOnly": False,
+                },
             ],
         }
 
