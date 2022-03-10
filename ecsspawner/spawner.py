@@ -316,16 +316,19 @@ class ECSSpawner(Spawner):
         max_tries = 50
         available_memory = 0
         available_cpu = 0
-        found = False
-        attempt = 0
-        self.state.append("Waiting for instance to appear in ECS cluster")
-        while (attempt < max_tries) and (not found):
+        empty = True
+        self.state.append("Waiting for any instance to appear in ECS cluster")
+        while empty:
             container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)[
                 "containerInstanceArns"
             ]
-            if len(container_instances_arn) == 0:
-                time.sleep(5)
+            time.sleep(5)
+            empty = len(container_instances_arn) > 0
 
+        found = False
+        attempt = 0
+        self.state.append("Waiting for this instance to appear in ECS cluster")
+        while (attempt < max_tries) and (not found):
             container_instances = ecs_client.describe_container_instances(
                 cluster=self.ecs_cluster, containerInstances=container_instances_arn
             )["containerInstances"]
