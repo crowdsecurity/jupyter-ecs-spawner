@@ -316,36 +316,33 @@ class ECSSpawner(Spawner):
         max_tries = 50
         available_memory = 0
         available_cpu = 0
+        found = False
+        attempt = 0
         self.state.append("Waiting for instance to appear in ECS cluster")
-        while True:
-            # the wait is a bit hacky, and may break if using a very large image
-            if max_tries == 0:
-                break
+        while (attempt < max_tries) and (not found):
             container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)[
                 "containerInstanceArns"
             ]
             if len(container_instances_arn) == 0:
-                max_tries -= 1
-                time.sleep(1)
-                continue
+                time.sleep(5)
+
             container_instances = ecs_client.describe_container_instances(
                 cluster=self.ecs_cluster, containerInstances=container_instances_arn
             )["containerInstances"]
             for container_instance in container_instances:
                 if container_instance["ec2InstanceId"] == self.instance_id:
+                    found = True
                     self.container_instance_arn = container_instance["containerInstanceArn"]
                     for res in container_instance["remainingResources"]:
                         if res["name"] == "CPU":
                             available_cpu = res["integerValue"]
                         if res["name"] == "MEMORY":
                             available_memory = res["integerValue"]
-                    break
-            else:
-                max_tries -= 1
-                time.sleep(1)
-                continue
-            break
-        if max_tries == 0:
+
+            time.sleep(5)
+            attempt += 1
+
+        if not found:
             self.log.warn("Did not find container instance for {0}".format(self.instance_id))
             return None
         else:
