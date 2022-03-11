@@ -401,7 +401,7 @@ class ECSSpawner(Spawner):
                     "readOnly": False,
                 },
             ],
-            "linuxParameters": {"sharedMemorySize": int(self.volume_size) / 4},
+            "linuxParameters": {"sharedMemorySize": int(self.volume_size / 4)},
         }
 
         if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
