@@ -323,7 +323,7 @@ class ECSSpawner(Spawner):
                 "containerInstanceArns"
             ]
             time.sleep(5)
-            empty = len(container_instances_arn) > 0
+            empty = len(container_instances_arn) == 0
 
         found = False
         attempt = 0
