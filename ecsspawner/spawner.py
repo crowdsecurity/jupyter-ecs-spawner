@@ -66,9 +66,9 @@ class ECSSpawner(Spawner):
         self.default_volume_size = os.environ["VOLUME_SIZE"]
 
         if self.user_options["volume"] != "":
-            self.volume_size = self.user_options["volume"]
+            self.volume_size = int(self.user_options["volume"])
         else:
-            self.volume_size = os.environ["VOLUME_SIZE"]
+            self.volume_size = int(os.environ["VOLUME_SIZE"])
 
         # Custom environment for notebook
         self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
