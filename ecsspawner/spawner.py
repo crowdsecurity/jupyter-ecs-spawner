@@ -201,6 +201,7 @@ class ECSSpawner(Spawner):
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
         else:
+            self.user_options["volume"] = 500
             volume_size = 500
 
         run_args["BlockDeviceMappings"] = [
@@ -249,6 +250,7 @@ class ECSSpawner(Spawner):
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
         else:
+            self.user_options["volume"] = 500
             volume_size = 500
 
         run_args["BlockDeviceMappings"] = [
