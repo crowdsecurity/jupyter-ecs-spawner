@@ -200,12 +200,16 @@ class ECSSpawner(Spawner):
 
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
-            run_args["BlockDeviceMappings"] = [
-                {
-                    "DeviceName": self.__get_root_volume_name(ami),
-                    "Ebs": {"VolumeSize": volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
-                }
-            ]
+        else:
+            self.user_options["volume"] = 500
+            volume_size = 500
+
+        run_args["BlockDeviceMappings"] = [
+            {
+                "DeviceName": self.__get_root_volume_name(ami),
+                "Ebs": {"VolumeSize": volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
+            }
+        ]
         instance = ec2_client.run_instances(**run_args)
         self.log.info("Starting EC2 instance")
         instance_id = instance["Instances"][0]["InstanceId"]
@@ -245,16 +249,16 @@ class ECSSpawner(Spawner):
             run_args["SecurityGroupIds"] = self.sg_id
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
-            run_args["BlockDeviceMappings"] = [
-                {
-                    "DeviceName": self.__get_root_volume_name(ami),
-                    "Ebs": {
-                        "VolumeSize": volume_size,
-                        "VolumeType": "gp3",
-                        "DeleteOnTermination": True,
-                    },
-                }
-            ]
+        else:
+            self.user_options["volume"] = 500
+            volume_size = 500
+
+        run_args["BlockDeviceMappings"] = [
+            {
+                "DeviceName": self.__get_root_volume_name(ami),
+                "Ebs": {"VolumeSize": volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
+            }
+        ]
         spot_request = ec2_client.request_spot_instances(InstanceCount=1, LaunchSpecification=run_args)
         self.state.append("Spot request created")
         waiter = ec2_client.get_waiter("spot_instance_request_fulfilled")
@@ -402,6 +406,7 @@ class ECSSpawner(Spawner):
                     "readOnly": False,
                 },
             ],
+            "linuxParameters": [{"sharedMemorySize": int(self.user_options["volume"] / 4)}],
         }
 
         if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
