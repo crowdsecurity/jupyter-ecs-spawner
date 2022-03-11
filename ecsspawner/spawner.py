@@ -63,6 +63,12 @@ class ECSSpawner(Spawner):
         self.sg_id = [os.environ["SECURITY_GROUP_ID"]]
         self.ecs_cluster = os.environ["ECS_CLUSTER"]
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
+        self.default_volume_size = os.environ["VOLUME_SIZE"]
+
+        if self.user_options["volume"] != "":
+            self.volume_size = self.user_options["volume"]
+        else:
+            self.volume_size = os.environ["VOLUME_SIZE"]
 
         # Custom environment for notebook
         self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
@@ -198,16 +204,10 @@ class ECSSpawner(Spawner):
             self.log.info("Adding security groups {0}".format(self.sg_id))
             run_args["SecurityGroupIds"] = self.sg_id
 
-        if self.user_options["volume"] != "":
-            volume_size = int(self.user_options["volume"])
-        else:
-            self.user_options["volume"] = 500
-            volume_size = 500
-
         run_args["BlockDeviceMappings"] = [
             {
                 "DeviceName": self.__get_root_volume_name(ami),
-                "Ebs": {"VolumeSize": volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
+                "Ebs": {"VolumeSize": self.volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
             }
         ]
         instance = ec2_client.run_instances(**run_args)
@@ -247,16 +247,11 @@ class ECSSpawner(Spawner):
             run_args["SubnetId"] = self.subnet_id
         if self.sg_id:
             run_args["SecurityGroupIds"] = self.sg_id
-        if self.user_options["volume"] != "":
-            volume_size = int(self.user_options["volume"])
-        else:
-            self.user_options["volume"] = 500
-            volume_size = 500
 
         run_args["BlockDeviceMappings"] = [
             {
                 "DeviceName": self.__get_root_volume_name(ami),
-                "Ebs": {"VolumeSize": volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
+                "Ebs": {"VolumeSize": self.volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
             }
         ]
         spot_request = ec2_client.request_spot_instances(InstanceCount=1, LaunchSpecification=run_args)
