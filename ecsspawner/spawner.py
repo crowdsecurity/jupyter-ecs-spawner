@@ -198,8 +198,11 @@ class ECSSpawner(Spawner):
             self.log.info("Adding security groups {0}".format(self.sg_id))
             run_args["SecurityGroupIds"] = self.sg_id
 
-        # if self.user_options["volume"] != "":
-        volume_size = int(self.user_options["volume"])
+        if self.user_options["volume"] != "":
+            volume_size = int(self.user_options["volume"])
+        else:
+            volume_size = 500
+
         run_args["BlockDeviceMappings"] = [
             {
                 "DeviceName": self.__get_root_volume_name(ami),
@@ -245,16 +248,15 @@ class ECSSpawner(Spawner):
             run_args["SecurityGroupIds"] = self.sg_id
         if self.user_options["volume"] != "":
             volume_size = int(self.user_options["volume"])
-            run_args["BlockDeviceMappings"] = [
-                {
-                    "DeviceName": self.__get_root_volume_name(ami),
-                    "Ebs": {
-                        "VolumeSize": volume_size,
-                        "VolumeType": "gp3",
-                        "DeleteOnTermination": True,
-                    },
-                }
-            ]
+        else:
+            volume_size = 500
+
+        run_args["BlockDeviceMappings"] = [
+            {
+                "DeviceName": self.__get_root_volume_name(ami),
+                "Ebs": {"VolumeSize": volume_size, "VolumeType": "gp3", "DeleteOnTermination": True},
+            }
+        ]
         spot_request = ec2_client.request_spot_instances(InstanceCount=1, LaunchSpecification=run_args)
         self.state.append("Spot request created")
         waiter = ec2_client.get_waiter("spot_instance_request_fulfilled")
