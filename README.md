@@ -1,3 +1,8 @@
+# NOTE
+
+This fork has deviated substantially and the README below is out of date. It will be updated soon but it will be left up in the meantime for reference. Please go to the original repo for their code
+
+
 # ECSSpawner (WIP)
 
 The ECSSpawner enables JupyterHub to spawn notebooks running on EC2 instances, in an ECS cluster.
