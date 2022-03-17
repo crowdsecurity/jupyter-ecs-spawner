@@ -64,11 +64,7 @@ class ECSSpawner(Spawner):
         self.ecs_cluster = os.environ["ECS_CLUSTER"]
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
         self.default_volume_size = os.environ["VOLUME_SIZE"]
-
-        if self.user_options["volume"] != "":
-            self.volume_size = int(self.user_options["volume"])
-        else:
-            self.volume_size = int(os.environ["VOLUME_SIZE"])
+        self.volume_size = int(os.environ["VOLUME_SIZE"])
 
         # Custom environment for notebook
         self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
@@ -108,6 +104,8 @@ class ECSSpawner(Spawner):
         self.task_definition_arn = None
         self.instance_type = self.user_options["instance"]
         self.region = self.user_options["region"]
+        if self.user_options["volume"] != "":
+            self.volume_size = int(self.user_options["volume"])
         self.state = []
 
         instance_id = await self.__spawn_ec2(self.user_options["instance"])
