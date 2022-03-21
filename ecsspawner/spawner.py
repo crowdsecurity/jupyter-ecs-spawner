@@ -50,9 +50,15 @@ class ECSSpawner(Spawner):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.state = []
+        self.region = None
+        self.instance_type = None
         self.instances = json.loads(pkgutil.get_data("ecsspawner", "instances.json"))
         self.amis = json.loads(pkgutil.get_data("ecsspawner", "amis.json"))
         self.check_config()
+
+        self.instance_id = None
+        self.task_definition_arn = None
 
         # AWS environment variables
         self.hub_host = os.environ["HUB_HOSTNAME"]
@@ -100,13 +106,10 @@ class ECSSpawner(Spawner):
         pass
 
     async def start(self):
-        self.instance_id = None
-        self.task_definition_arn = None
         self.instance_type = self.user_options["instance"]
         self.region = self.user_options["region"]
         if self.user_options["volume"] != "":
             self.volume_size = int(self.user_options["volume"])
-        self.state = []
 
         instance_id = await self.__spawn_ec2(self.user_options["instance"])
         with ThreadPoolExecutor(1) as executor:
@@ -123,15 +126,11 @@ class ECSSpawner(Spawner):
 
     def terminate_instance(self):
         ec2_client = boto3.client("ec2", region_name=self.user_options["region"])
-        ec2_client.terminate_instances(
-            InstanceIds=[
-                self.instance_id,
-            ]
-        )
+        ec2_client.terminate_instances(InstanceIds=[self.instance_id])
         waiter = ec2_client.get_waiter("instance_terminated")
         waiter.wait(InstanceIds=[self.instance_id])
 
-    async def stop(self):
+    async def stop(self, now=False):
         self.log.debug("Starting stop method")
         if self.instance_id:
             self.log.info("Terminating instance {0}".format(self.instance_id))
@@ -170,14 +169,14 @@ class ECSSpawner(Spawner):
             "volume": formdata["volume"][0],
         }
 
-    def __run_instance(self, ami, type, region):
+    def __run_instance(self, ami, tpe, region):
         ec2_client = boto3.client("ec2", region_name=region)
-        self.log.info("Requesting non spot instance of type {0}".format(type))
+        self.log.info("Requesting non spot instance of type {0}".format(tpe))
         run_args = {
             "ImageId": ami,
             "MinCount": 1,
             "MaxCount": 1,
-            "InstanceType": type,
+            "InstanceType": tpe,
             "UserData": base64.b64encode(self.USER_DATA_SCRIPT.format(self.ecs_cluster).encode()).decode(),
             "InstanceInitiatedShutdownBehavior": "terminate",
             "IamInstanceProfile": {"Arn": self.instance_role_arn},
@@ -230,12 +229,12 @@ class ECSSpawner(Spawner):
         r = ec2_client.describe_images(ImageIds=[ami])
         return r["Images"][0]["BlockDeviceMappings"][0]["DeviceName"]
 
-    def __request_spot_instance(self, ami, type, region):
+    def __request_spot_instance(self, ami, tpe, region):
         ec2_client = boto3.client("ec2", region_name=region)
         self.log.info("Requesting spot instance")
         run_args = {
             "ImageId": ami,
-            "InstanceType": type,
+            "InstanceType": tpe,
             "UserData": base64.b64encode(self.USER_DATA_SCRIPT.format(self.ecs_cluster).encode()).decode(),
             "IamInstanceProfile": {"Arn": self.instance_role_arn},
         }
@@ -276,14 +275,14 @@ class ECSSpawner(Spawner):
             ]
         return instance_id
 
-    async def __spawn_ec2(self, type):
+    async def __spawn_ec2(self, tpe):
         region = self.user_options["region"]
-        if self.instances[region][type].get("gpu"):
+        if self.instances[region][tpe].get("gpu"):
             if self.ec2_gpu_ami != "":
                 ami = self.ec2_gpu_ami
             else:
                 ami = self.amis[region]["gpu"]
-        elif self.instances[region][type]["arch"] == "x86_64" or self.instances[region][type]["arch"] == "i386":
+        elif self.instances[region][tpe]["arch"] == "x86_64" or self.instances[region][tpe]["arch"] == "i386":
             if self.ec2_ami != "":
                 ami = self.ec2_ami
             else:
@@ -296,13 +295,13 @@ class ECSSpawner(Spawner):
 
         self.log.info("Using AMI {0}".format(ami))
         if self.user_options.get("spot") is None:
-            self.state.append("Requesting {0} non spot instance".format(type))
+            self.state.append("Requesting {0} non spot instance".format(tpe))
             spawn_method = self.__run_instance
         else:
-            self.state.append("Requesting {0} spot instance".format(type))
+            self.state.append("Requesting {0} spot instance".format(tpe))
             spawn_method = self.__request_spot_instance
         with ThreadPoolExecutor(1) as executor:
-            future = asyncio.wrap_future(executor.submit(spawn_method, ami, type, region))
+            future = asyncio.wrap_future(executor.submit(spawn_method, ami, tpe, region))
             await asyncio.wrap_future(future)
             self.instance_id = future.result()
         self.log.info("Finished spawning EC2")
@@ -310,17 +309,16 @@ class ECSSpawner(Spawner):
     def __create_ecs_task(self):
         region = self.user_options["region"]
         ecs_client = boto3.client("ecs", region_name=region)
-        max_tries = 50
+        max_tries = 200
         available_memory = 0
         available_cpu = 0
-        empty = True
         self.state.append("Waiting for any instance to appear in ECS cluster")
-        while empty:
+        container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)["containerInstanceArns"]
+        while not len(container_instances_arn):
+            time.sleep(5)
             container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)[
                 "containerInstanceArns"
             ]
-            time.sleep(5)
-            empty = len(container_instances_arn) == 0
 
         found = False
         attempt = 0
