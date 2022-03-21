@@ -77,8 +77,8 @@ class ECSSpawner(Spawner):
 
         self.custom_env = {
             "MLFLOW_TRACKING_URI": os.environ["MLFLOW_TRACKING_URI"],
-            "JUPYTERHUB_API_URL": f"http://{self.hub_host}:8081/hub/api",
-            "JUPYTERHUB_ACTIVITY_URL": f"http://{self.hub_host}:8081/hub/api/users/test/activity",
+            # "JUPYTERHUB_API_URL": f"http://{self.hub_host}:8081/hub/api",
+            # "JUPYTERHUB_ACTIVITY_URL": f"http://{self.hub_host}:8081/hub/api/users/test/activity",
         }
 
     @staticmethod
@@ -312,7 +312,7 @@ class ECSSpawner(Spawner):
         max_tries = 200
         available_memory = 0
         available_cpu = 0
-        self.state.append("Waiting for any instance to appear in ECS cluster")
+        self.state.append("Waiting for any instances to appear in ECS cluster")
         container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)["containerInstanceArns"]
         while not len(container_instances_arn):
             time.sleep(5)
@@ -322,7 +322,7 @@ class ECSSpawner(Spawner):
 
         found = False
         attempt = 0
-        self.state.append("Waiting for this instance to appear in ECS cluster")
+        self.state.append(f"Attempt {attempt} - waiting for {self.instance_id} to appear in ECS cluster")
         while (attempt < max_tries) and (not found):
             container_instances = ecs_client.describe_container_instances(
                 cluster=self.ecs_cluster, containerInstances=container_instances_arn
@@ -337,8 +337,10 @@ class ECSSpawner(Spawner):
                         if res["name"] == "MEMORY":
                             available_memory = res["integerValue"]
 
-            time.sleep(5)
+            time.sleep(6)
             attempt += 1
+            if not attempt % 10:
+                self.state.append(f"Attempt {attempt} - waiting for {self.instance_id} to appear in ECS cluster")
 
         if not found:
             self.log.warn("Did not find container instance for {0}".format(self.instance_id))
