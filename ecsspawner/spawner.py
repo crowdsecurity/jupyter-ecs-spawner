@@ -322,16 +322,19 @@ class ECSSpawner(Spawner):
 
         found = False
         attempt = 0
-        self.state.append(f"Attempt {attempt} - waiting for {self.instance_id} to appear in ECS cluster")
+        self.state.append(
+            f"Attempt {attempt} - waiting for {self.instance_id} to appear in ECS cluster and found={found}"
+        )
         while (attempt < max_tries) and (not found):
             container_instances = ecs_client.describe_container_instances(
                 cluster=self.ecs_cluster, containerInstances=container_instances_arn
             )["containerInstances"]
-            for container_instance in container_instances:
-                if container_instance["ec2InstanceId"] == self.instance_id:
+            for this_instance in container_instances:
+                self.state.append(f"attempt {attempt} - {this_instance['ec2InstanceId']} - {self.instance_id}")
+                if this_instance["ec2InstanceId"] in str(self.instance_id):
                     found = True
-                    self.container_instance_arn = container_instance["containerInstanceArn"]
-                    for res in container_instance["remainingResources"]:
+                    self.container_instance_arn = this_instance["containerInstanceArn"]
+                    for res in this_instance["remainingResources"]:
                         if res["name"] == "CPU":
                             available_cpu = res["integerValue"]
                         if res["name"] == "MEMORY":
@@ -340,7 +343,9 @@ class ECSSpawner(Spawner):
             time.sleep(6)
             attempt += 1
             if not attempt % 10:
-                self.state.append(f"Attempt {attempt} - waiting for {self.instance_id} to appear in ECS cluster")
+                self.state.append(
+                    f"Attempt {attempt} - waiting for {self.instance_id} to appear in ECS cluster and found={found}"
+                )
 
         if not found:
             self.log.warn("Did not find container instance for {0}".format(self.instance_id))
