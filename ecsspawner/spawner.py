@@ -55,10 +55,10 @@ class ECSSpawner(Spawner):
         sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_386/amazon-ssm-agent.rpm
     elif [[ $arch == arm* ]]; then
         sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_arm64/amazon-ssm-agent.rpm
-    else;
+    else
         echo "Architecture not found; SSM will not be installed."
     fi
-    
+
     """
 
     def __init__(self, **kwargs):
@@ -400,6 +400,12 @@ class ECSSpawner(Spawner):
             "user": "root",
             "workingDirectory": "/home/{0}".format(self.user.name),
             "command": ["start-singleuser.sh"],
+            "portMappings": [
+                                {
+                                    "containerPort": 8082,
+                                    "hostPort": 8082
+                                }
+                            ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
