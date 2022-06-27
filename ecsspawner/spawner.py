@@ -55,10 +55,10 @@ class ECSSpawner(Spawner):
         sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_386/amazon-ssm-agent.rpm
     elif [[ $arch == arm* ]]; then
         sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_arm64/amazon-ssm-agent.rpm
-    else;
+    else
         echo "Architecture not found; SSM will not be installed."
     fi
-    
+
     """
 
     def __init__(self, **kwargs):
@@ -325,6 +325,7 @@ class ECSSpawner(Spawner):
         max_tries = 200
         available_memory = 0
         available_cpu = 0
+        bound_port = 8082
         self.state.append("Waiting for any instances to appear in ECS cluster")
         container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)["containerInstanceArns"]
         while not len(container_instances_arn):
@@ -400,6 +401,12 @@ class ECSSpawner(Spawner):
             "user": "root",
             "workingDirectory": "/home/{0}".format(self.user.name),
             "command": ["start-singleuser.sh"],
+            "portMappings": [
+                                {
+                                    "containerPort": bound_port,
+                                    "hostPort": bound_port
+                                }
+                            ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
