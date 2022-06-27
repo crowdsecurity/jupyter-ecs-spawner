@@ -46,6 +46,19 @@ class ECSSpawner(Spawner):
     #!/bin/bash
 
     echo ECS_CLUSTER={0} >> /etc/ecs/ecs.config
+
+    # Install AWS SSM for connecting to the instances
+    arch=$(uname -i)
+    if [[ $arch == x86_64* ]]; then
+        sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+    elif [[ $arch == i*86 ]]; then
+        sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_386/amazon-ssm-agent.rpm
+    elif [[ $arch == arm* ]]; then
+        sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_arm64/amazon-ssm-agent.rpm
+    else;
+        echo "Architecture not found; SSM will not be installed."
+    fi
+    
     """
 
     def __init__(self, **kwargs):
