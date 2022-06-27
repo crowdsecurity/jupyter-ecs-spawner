@@ -84,6 +84,7 @@ class ECSSpawner(Spawner):
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
         self.default_volume_size = os.environ["VOLUME_SIZE"]
         self.volume_size = int(os.environ["VOLUME_SIZE"])
+        self.port_binding = int(os.environ["PORT_BINDING"]) if "PORT_BINDING" in os.environ else None
 
         # Custom environment for notebook
         self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
@@ -325,7 +326,7 @@ class ECSSpawner(Spawner):
         max_tries = 200
         available_memory = 0
         available_cpu = 0
-        bound_port = 8082
+        bound_port = 56789
         self.state.append("Waiting for any instances to appear in ECS cluster")
         container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)["containerInstanceArns"]
         while not len(container_instances_arn):
@@ -403,8 +404,8 @@ class ECSSpawner(Spawner):
             "command": ["start-singleuser.sh"],
             "portMappings": [
                                 {
-                                    "containerPort": bound_port,
-                                    "hostPort": bound_port
+                                    "containerPort": self.bound_port,
+                                    "hostPort": self.bound_port
                                 }
                             ],
             "logConfiguration": {
