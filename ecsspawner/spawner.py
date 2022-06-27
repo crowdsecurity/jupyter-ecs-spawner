@@ -402,12 +402,6 @@ class ECSSpawner(Spawner):
             "user": "root",
             "workingDirectory": "/home/{0}".format(self.user.name),
             "command": ["start-singleuser.sh"],
-            "portMappings": [
-                                {
-                                    "containerPort": self.bound_port,
-                                    "hostPort": self.bound_port
-                                }
-                            ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
@@ -430,6 +424,14 @@ class ECSSpawner(Spawner):
             ],
             "linuxParameters": {"sharedMemorySize": int(self.volume_size / 4) * 1000},
         }
+
+        if self.port_binding:
+            print(f"binding port = {self.bound_port}")
+            container_def["portMappings"] = [{
+                                                "containerPort": self.bound_port,
+                                                "hostPort": self.bound_port
+                                             }],
+            self.log.info(f"Binding port = {self.bound_port}")
 
         if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
             num_gpus = self.instances[region][self.user_options["instance"]]["gpu"]["count"]
