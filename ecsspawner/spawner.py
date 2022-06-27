@@ -427,10 +427,10 @@ class ECSSpawner(Spawner):
 
         if self.port_binding:
             print(f"binding port = {self.port_binding}")
-            container_def["portMappings"] = [{
+            container_def["portMappings"] = {
                                                 "containerPort": self.port_binding,
                                                 "hostPort": self.port_binding
-                                             }],
+                                             },
             self.log.info(f"Binding port = {self.port_binding}")
 
         if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
