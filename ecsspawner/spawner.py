@@ -84,7 +84,7 @@ class ECSSpawner(Spawner):
         self.instance_role_arn = os.environ["INSTANCE_ROLE_ARN"]
         self.default_volume_size = os.environ["VOLUME_SIZE"]
         self.volume_size = int(os.environ["VOLUME_SIZE"])
-        self.port_binding = int(os.environ["PORT_BINDING"]) if "PORT_BINDING" in os.environ else None
+        self.port_binding = 56789 #int(os.environ["PORT_BINDING"]) if "PORT_BINDING" in os.environ else None
 
         # Custom environment for notebook
         self.default_docker_image_gpu = os.environ["GPU_DOCKER_IMAGE"]
@@ -426,12 +426,12 @@ class ECSSpawner(Spawner):
         }
 
         if self.port_binding:
-            print(f"binding port = {self.bound_port}")
+            print(f"binding port = {self.port_binding}")
             container_def["portMappings"] = [{
-                                                "containerPort": self.bound_port,
-                                                "hostPort": self.bound_port
+                                                "containerPort": self.port_binding,
+                                                "hostPort": self.port_binding
                                              }],
-            self.log.info(f"Binding port = {self.bound_port}")
+            self.log.info(f"Binding port = {self.port_binding}")
 
         if self.instances[region][self.user_options["instance"]].get("gpu") is not None:
             num_gpus = self.instances[region][self.user_options["instance"]]["gpu"]["count"]
