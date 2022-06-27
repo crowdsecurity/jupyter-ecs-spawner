@@ -325,6 +325,7 @@ class ECSSpawner(Spawner):
         max_tries = 200
         available_memory = 0
         available_cpu = 0
+        bound_port = 8082
         self.state.append("Waiting for any instances to appear in ECS cluster")
         container_instances_arn = ecs_client.list_container_instances(cluster=self.ecs_cluster)["containerInstanceArns"]
         while not len(container_instances_arn):
@@ -402,8 +403,8 @@ class ECSSpawner(Spawner):
             "command": ["start-singleuser.sh"],
             "portMappings": [
                                 {
-                                    "containerPort": 8082,
-                                    "hostPort": 8082
+                                    "containerPort": bound_port,
+                                    "hostPort": bound_port
                                 }
                             ],
             "logConfiguration": {
